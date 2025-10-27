@@ -1,34 +1,72 @@
 // Copy function to copy link
 function copy() {
-  var copyText = document.getElementById('link');
-  copyText.select();
-  copyText.setSelectionRange(0, 99999);
-  document.execCommand('copy');
-  tata.success('Link Copied', '', {
-    animate: 'fade',
-    position: 'tm',
-  });
+  const input = document.getElementById('link');
+  const text = input ? input.value : '';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      tata.success('Link Copied', '', { animate: 'fade', position: 'tm' });
+    }).catch(() => {
+      // fallback
+      if (input) {
+        input.select();
+        document.execCommand('copy');
+        tata.success('Link Copied', '', { animate: 'fade', position: 'tm' });
+      }
+    });
+  } else if (input) {
+    input.select();
+    document.execCommand('copy');
+    tata.success('Link Copied', '', { animate: 'fade', position: 'tm' });
+  }
 }
 
 // Create room
 document.getElementById('createform').addEventListener('submit', (e) => {
   e.preventDefault();
   const labname = document.getElementById('labname').value;
+  const createdby = document.getElementById('createdby').value;
   const language = document.getElementById('language').value;
-  const testTimeLimit = document.getElementById('testTimeLimit').value;
-  const questionStatements = document.getElementById('questionStatements').value.split('\n').filter(statement => statement.trim() !== '');
+  const sessionType = document.getElementById('sessionType').value;
+  const password = document.getElementById('password').value;
+  
+  // Only get these values for test mode
+  let testTimeLimit = 0;
+  let questionStatements = [];
+  
+  if (sessionType === 'test') {
+    testTimeLimit = document.getElementById('testTimeLimit').value;
+    const raw = document.getElementById('questionStatements').value || '';
+    function parseQuestions(text) {
+      const normalized = text.replace(/\r/g, '').trim();
+      if (normalized === '') return [];
+      // Prefer an explicit separator line: ---
+      if (/^\s*---\s*$/m.test(normalized)) {
+        return normalized.split(/^\s*---\s*$/m).map(q => q.trim()).filter(Boolean);
+      }
+      // Fallback: split by 2+ consecutive newlines (blank line between questions)
+      return normalized.split(/\n{2,}/).map(q => q.trim()).filter(Boolean);
+    }
+    questionStatements = parseQuestions(raw);
+  } else {
+    // Practice mode - set default values
+    testTimeLimit = 0; // No time limit
+    questionStatements = ['Practice Mode: Write and test your code freely!']; // Default message
+  }
 
-  axios
-    .post('/api/v1/create', {
-      password,
-      by,
-      testTimeLimit, 
-      questionStatements
-    })
+  axios.post('/api/v1/create', {
+    labname,
+    createdby,
+    password,
+    language,
+    testTimeLimit,
+    questionStatements,
+    sessionType,
+  })
     .then((res) => {
-      //console.log(res.data);
-      adminCode = res.data.admincode;
-      roomid = res.data.id;
+      // declare scoped variables
+      const adminCode = res.data.admincode;
+      const roomid = res.data.id;
+      const origin = window.location.origin;
       document
         .getElementById('linkmodal')
         .querySelectorAll('.modal-container')
@@ -41,7 +79,7 @@ document.getElementById('createform').addEventListener('submit', (e) => {
           <div class="px-8 pt-10 pb-4">
               <div class="flex flex-col">
                   <h4 class="text-primary-dark">The link to your room is</h4>
-                  <div class="flex w-full"><input type="text" name="link" id="link" class="link w-full link-hover py-2 my-3 border px-4 rounded-pill" readonly="" value="http://localhost:3001/room/join/${roomid}">
+          <div class="flex w-full"><input type="text" name="link" id="link" class="link w-full link-hover py-2 my-3 border px-4 rounded-pill" readonly="" value="${origin}/room/join/${roomid}">
                   </div>
                   <button class="btn modal-btn" onclick="copy()">Copy Link</button>
               </div>
@@ -56,7 +94,7 @@ document.getElementById('createform').addEventListener('submit', (e) => {
                   <div class="flex w-full">
 
                   </div>
-                  <a href="http://localhost:3001/admin/${roomid}/${adminCode}"> <button class="btn modal-btn" >Go to Admin Panel</button></a>
+          <a href="${origin}/admin/${roomid}/${adminCode}"> <button class="btn modal-btn" >Go to Admin Panel</button></a>
               </div>
           </div>
       </div>

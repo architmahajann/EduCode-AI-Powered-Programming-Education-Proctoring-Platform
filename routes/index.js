@@ -10,29 +10,56 @@ router.get('/', function (req, res, next) {
   res.render('index', { title: 'Express', page: 'Home', menuId: 'home' });
 });
 
-router.get('/admin/:roomId/:admincode', (req, res) => {
-  roomModal.findById(req.params.roomId, (err, room) => {
-    if (req.params.admincode === room.adminCode)
+router.get('/create', function(req, res) {
+  res.render('create', { page: 'Create Room', menuId: 'create' });
+});
+
+router.get('/admin/:roomId/:admincode', async (req, res) => {
+  try {
+    if (!req.params.roomId || !req.params.admincode) {
+      return res.render('404');
+    }
+    const room = await roomModal.findById(req.params.roomId);
+    if (!room) {
+      return res.render('404');
+    }
+    if (req.params.admincode === room.adminCode) {
       return res.render('adminpanal', {
         page: 'admin',
         menuId: 'home',
         language: room.languageId,
-        testTime: room.testTime, // Include test time in the render
+        testTime: room.testTimeLimit,
+        labname: room.labname,
+        createdby: room.createdBy,
+        questionStatements: room.questionStatements || [],
+        allottedQuestion: room.allottedQuestion || null,
+        allottedQuestions: room.allottedQuestions || [],
       });
-    else {
-      res.render('404');
     }
-  });
+    return res.render('404');
+  } catch (err) {
+    console.error('Error fetching room for admin route:', err);
+    return res.render('404');
+  }
 });
-function verifyAdmin(req, res, next) {
-  roomModal.findById(req.params.roomId, (err, room) => {
+async function verifyAdmin(req, res, next) {
+  try {
+    if (!req.params.roomId || !req.params.admincode) {
+      return res.render('404');
+    }
+    const room = await roomModal.findById(req.params.roomId);
+    if (!room) {
+      return res.render('404');
+    }
     if (req.params.admincode === room.adminCode) {
       req.labname = room.labname;
-      next();
-    } else {
-      res.render('404');
+      return next();
     }
-  });
+    return res.render('404');
+  } catch (err) {
+    console.error('Error in verifyAdmin middleware:', err);
+    return res.render('404');
+  }
 }
 
 router.get('/admin/:roomId/:admincode/report', verifyAdmin, (req, res) => {

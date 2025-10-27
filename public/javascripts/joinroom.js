@@ -7,7 +7,9 @@ joinroom.addEventListener('submit', async (e) => {
   e.preventDefault();
   const password = document.getElementById('password').value;
   const username = document.getElementById('username').value;
-  const id = window.location.toString().split('room/')[1].split('/')[1];
+  const urlParts = new URL(window.location.href);
+  const pathParts = urlParts.pathname.split('/');
+  const id = pathParts[pathParts.indexOf('room') + 2];
   console.log(id);
   axios
     .post('/api/v1/joinroom', {

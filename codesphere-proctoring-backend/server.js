@@ -5,8 +5,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const uniqueId = require("uniqid");
 require("dotenv").config();
-// require("./db/config.js").connect();
-const connectDB = require("./db/config.js")
+const connectDB = require("./db/config.js");
 const UserDataSchema = require("./models/userdata.js");
 const port = process.env.PORT || 3000;
 const cloudinary = require('cloudinary');
@@ -53,16 +52,55 @@ app.post("/createUser", async (req, res) => {
     }
 });
 
+// Configure Cloudinary if credentials are provided
+if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+) {
+    cloudinary.v2.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+}
+
+/*  route to upload image from extension */
+app.post("/upload-image", async (req, res) => {
+    try {
+        const { userid, image } = req.body;
+        if (!userid || !image) {
+            return res.status(400).send("'userid' and 'image' are required");
+        }
+
+        const fileName = uniqueId.time();
+        let imageUrl = null;
+
+        // Upload to Cloudinary when configured
+        if (
+            process.env.CLOUDINARY_CLOUD_NAME &&
+            process.env.CLOUDINARY_API_KEY &&
+            process.env.CLOUDINARY_API_SECRET
+        ) {
+            const result = await cloudinary.v2.uploader.upload(image, {
+                folder: "codesphere-proctoring",
+                public_id: fileName,
+            });
+            imageUrl = result.secure_url;
+        } else {
+            console.warn("Cloudinary is not configured. Skipping upload.");
+            imageUrl = "not-uploaded";
+        }
 
         // Update user document with the new image URL
-        const user = await UserDataSchema.findOneAndUpdate(
+        await UserDataSchema.findOneAndUpdate(
             { id: userid },
-            { $push: { images: { id: fileName, url: result.secure_url } } },
+            { $push: { images: { id: fileName, url: imageUrl } } },
             { new: true }
         );
 
-        // Return success response
-        res.json({ interval }).status(200);
+        // Return success response along with current capture interval
+        res.status(200).json({ interval });
     } catch (error) {
         console.log("Error uploading image:", error);
         res.status(500).send("Failed to save image");
@@ -85,7 +123,9 @@ app.get("/cleardb", async (_req, res) => {
 
 const start = async () => {
     try {
-        await connectDB(process.env.MONGO_URI);
+        // Support both MONGO_URI and MONGO_DB_URI
+        const mongoUrl = process.env.MONGO_URI || process.env.MONGO_DB_URI;
+        await connectDB(mongoUrl);
         app.listen(port, () =>
             console.log(`API is setup on✅... http://localhost:${port}/`)
         );

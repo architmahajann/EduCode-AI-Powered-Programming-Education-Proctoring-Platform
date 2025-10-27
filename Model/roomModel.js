@@ -36,7 +36,18 @@ const roomSchema = new mongoose.Schema({
   questionStatements: [{
     type: String,
     required: true
-}]
+}],
+
+  // Persist a single question that is allotted for the room (test mode)
+  allottedQuestion: {
+    type: String,
+    default: null,
+  },
+  // New: Support multiple allotted questions
+  allottedQuestions: {
+    type: [String],
+    default: [],
+  }
 });
 
 const Room = mongoose.model('Room', roomSchema);

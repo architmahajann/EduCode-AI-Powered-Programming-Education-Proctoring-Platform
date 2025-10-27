@@ -16,14 +16,19 @@
 
 const mongoose = require("mongoose");
 
-const connectDB = () => {
-    const url = '';
-
-    // returns promise
-    return mongoose.connect(url, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    });
+const connectDB = async (url) => {
+    if (!url) {
+        throw new Error('MongoDB connection URL is required');
+    }
+    try {
+        await mongoose.connect(url, {
+            // Note: useNewUrlParser and useUnifiedTopology are no longer needed in Mongoose 6+
+        });
+        console.log('Connected to MongoDB successfully');
+    } catch (error) {
+        console.error('MongoDB connection error:', error);
+        throw error;
+    }
 };
 
 module.exports = connectDB;

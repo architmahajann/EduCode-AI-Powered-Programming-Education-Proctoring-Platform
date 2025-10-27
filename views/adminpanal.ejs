@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <% include partials/idehead %>
+    <%- include('partials/idehead') %>
         <link rel="stylesheet" href="/stylesheets/codemirror.css">
         <link rel="stylesheet" href="/stylesheets/dracula.css">
         <script src="/socket.io/socket.io.js"></script>
@@ -51,16 +51,37 @@
                 <div class="lab-name">
                     <%= labname %>
                 </div>
-                <button class="dlt-room btn" id='deleteroom'>Delete Room</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" class="btn btn-beauty" id='report' title="Open grading & submissions">📊 <span style="margin-left:6px;">View All Submissions</span></button>
+                    <button type="button" class="dlt-room btn btn-danger" id='deleteroom'>Delete Room</button>
+                    <label style="display:flex; align-items:center; gap:6px; margin-left:10px; font-size:13px;">
+                        <input type="checkbox" id="broadcastToggle" />
+                        <span>Share Editor to Students</span>
+                    </label>
+                    <div style="display:flex; align-items:center; gap:6px; margin-left:10px; font-size:13px;">
+                                    <select id="allottedQuestionSelect" multiple style="min-width:300px; padding:6px; max-width:520px;">
+                                                        <option value="" disabled selected>Select allotted question…</option>
+                                                                                <% (questionStatements || []).forEach(function(q, i){ %>
+                                                                                    <option value="<%= i %>" <%= (Array.isArray(allottedQuestions) && allottedQuestions.includes(q)) ? 'selected' : (allottedQuestion && allottedQuestion === q ? 'selected' : '') %>><%= (q.split('\n')[0] || '').slice(0, 100) %><%= (q.length > 100 ? '…' : '') %></option>
+                                                        <% }) %>
+                                                </select>
+                        <span id="selectedCount" style="background:#eef4ff; color:#0d6efd; border:1px solid #cfe2ff; padding:2px 6px; border-radius:12px; font-size:12px;">0 selected</span>
+                                                <button id="setAllottedQuestionBtn" class="btn btn-beauty" title="Set selected question for all students">Set Allotted</button>
+                                        </div>
+                </div>
             </div>
             <div class="ide-layout">
 
                 <div class="ide-main">
                     <div class="student-list">
-                        <h4 class="stu-title">Active Members</h4>
+                        <h4 class="stu-title">Student List</h4>
+                        <p style="font-size: 12px; color: #666; margin: 5px 10px; line-height: 1.4;">
+                            <strong>Tip:</strong> Click on any student (active or inactive) to view their code. 
+                            Use "View All Submissions" button to see complete history with timestamps.
+                        </p>
                         <!-- ---List here--- -->
                         <div id='userlist'>
-
+                            <p style="color: #999; font-size: 14px; padding: 10px; text-align: center;">No students joined yet</p>
                         </div>
 
                     </div>
@@ -97,14 +118,56 @@
     </div>
 
     <footer style="position: fixed; bottom: 0; width: 100%; background-color: #1a1a1a; color: white; text-align: center; padding: 5px;">
-        &copy; Sarvesh Hadole And Team
+        &copy; Archit Mahajan And Team
     </footer>
 
-    <script>
+        <script id="room-questions" type="application/json"><%- JSON.stringify(questionStatements || []) %></script>
+        <script>
         // Add this code to your admin.js file
         document.addEventListener('DOMContentLoaded', function () {
-            const socket = io(); // Connect to Socket.IO server
+            const socket = window.socket || io(); // Reuse shared socket
+            window.socket = socket;
             const adminPanel = document.getElementById('tabalert');
+            const setBtn = document.getElementById('setAllottedQuestionBtn');
+            const select = document.getElementById('allottedQuestionSelect');
+            const roomId = window.location.toString().split('admin/')[1].split('/')[0];
+                        // Provide full questions to JS safely via JSON script tag
+                        try {
+                            const jsonEl = document.getElementById('room-questions');
+                            window.roomQuestions = JSON.parse((jsonEl && jsonEl.textContent) || '[]');
+                        } catch (_) { window.roomQuestions = []; }
+
+            function updateSelectedCount(){
+                try {
+                    const countEl = document.getElementById('selectedCount');
+                    if (!countEl || !select) return;
+                    const count = Array.from(select.options).filter(o => o.selected && o.value !== '').length;
+                    countEl.textContent = `${count} selected`;
+                } catch(_) {}
+            }
+
+            if (setBtn && select) {
+                // Initialize selected count on load
+                updateSelectedCount();
+                // Update on change
+                select.addEventListener('change', updateSelectedCount);
+                setBtn.addEventListener('click', async function(){
+                    try {
+                        const selected = Array.from(select.options).filter(o => o.selected && o.value !== '').map(o => parseInt(o.value, 10)).filter(n => !Number.isNaN(n));
+                        if (selected.length === 0) return;
+                        const questions = selected.map(i => (window.roomQuestions && window.roomQuestions[i]) || '').filter(Boolean);
+                        if (questions.length === 0) return;
+                        // Persist on server (supports multiple)
+                        await axios.post('/api/v1/setallottedquestion', { roomId, questions });
+                        // Broadcast live to students (multiple)
+                        socket.emit('admin-set-allotted-questions', { roomId, questions });
+                        try { tata.success('Allotted questions updated'); } catch(_) {}
+                    } catch (e) {
+                        console.error('Failed to set allotted questions', e);
+                        try { tata.error('Failed to set allotted questions'); } catch(_) {}
+                    }
+                });
+            }
 
             // Update the visibility change event listener in admin.js
             socket.on('visibility-change', ({ username, roomId, action, url }) => {
@@ -151,6 +214,138 @@
     <script src="/javascripts/tata.js"></script>
     <script type="text/javascript" src="/javascripts/admin.js"></script>
     <script type="text/javascript" src="/javascripts/runcode.js"></script>
+
+    <!-- Admin AV Broadcast UI -->
+    <div style="position: fixed; bottom: 48px; right: 16px; background: #ffffff; border:1px solid #e9ecef; box-shadow: 0 6px 16px rgba(0,0,0,0.15); padding: 10px; border-radius: 8px; width: 320px; z-index: 1001;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <strong style="color:#0d6efd;">🎥 Camera & Mic Broadcast</strong>
+            <small id="avStatus" style="color:#6c757d;">Stopped</small>
+        </div>
+        <video id="adminPreview" autoplay playsinline muted style="width:100%; height:180px; background:#000; border-radius:6px; display:none;"></video>
+        <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+            <button id="btnStartAV" class="btn btn-beauty">Start</button>
+            <button id="btnStopAV" class="btn btn-danger" disabled>Stop</button>
+            <button id="btnToggleMute" class="btn btn-secondary" disabled>Mute</button>
+        </div>
+    </div>
+
+    <script>
+        // Admin AV Broadcast Logic (WebRTC one-to-many)
+        (function(){
+            const socket = window.socket || io();
+            window.socket = socket;
+            const roomId = window.location.toString().split('admin/')[1].split('/')[0];
+            const preview = document.getElementById('adminPreview');
+            const btnStart = document.getElementById('btnStartAV');
+            const btnStop = document.getElementById('btnStopAV');
+            const btnMute = document.getElementById('btnToggleMute');
+            const statusEl = document.getElementById('avStatus');
+            let localStream = null;
+            // Map of viewer socket id -> RTCPeerConnection
+            const pcMap = new Map();
+            // ICE servers from server-side env (supports TURN when provided)
+            const ICE_SERVERS = (function(){
+                try { return JSON.parse('<%- JSON.stringify(WEBRTC_ICE_SERVERS || []) %>'); }
+                catch(_) { return [{ urls: ['stun:stun.l.google.com:19302'] }]; }
+            })();
+
+            function updateUI(running){
+                if (statusEl) statusEl.textContent = running ? 'Live' : 'Stopped';
+                if (preview) preview.style.display = running ? 'block' : 'none';
+                btnStart && (btnStart.disabled = running);
+                btnStop && (btnStop.disabled = !running);
+                btnMute && (btnMute.disabled = !running);
+            }
+
+            async function startAV(){
+                try{
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    preview.srcObject = localStream;
+                    updateUI(true);
+                    socket.emit('admin-broadcast-av-started', { roomId });
+                    tata.success('Broadcast', 'Camera & Mic live');
+                } catch(err){
+                    console.error('getUserMedia failed', err);
+                    tata.error('Broadcast', 'Failed to access camera/mic');
+                }
+            }
+
+            function stopAV(){
+                try{
+                    pcMap.forEach((pc) => { try{ pc.close(); } catch(_){} });
+                    pcMap.clear();
+                    if (localStream){
+                        localStream.getTracks().forEach(t => t.stop());
+                        localStream = null;
+                    }
+                    updateUI(false);
+                    socket.emit('admin-broadcast-av-stopped', { roomId });
+                    tata.warn('Broadcast', 'Stopped');
+                } catch(err){ console.error(err); }
+            }
+
+            btnStart && btnStart.addEventListener('click', startAV);
+            btnStop && btnStop.addEventListener('click', stopAV);
+            btnMute && btnMute.addEventListener('click', () => {
+                if (!localStream) return;
+                const audioTracks = localStream.getAudioTracks();
+                if (audioTracks.length){
+                    const enable = !audioTracks[0].enabled;
+                    audioTracks.forEach(t => t.enabled = enable);
+                    btnMute.textContent = enable ? 'Mute' : 'Unmute';
+                }
+            });
+
+            // When a viewer is ready, create a PC and send an offer
+            socket.on('viewer-ready', async ({ viewerSocketId, username }) => {
+                try{
+                    if (!localStream) return; // ignore if not live
+                    if (pcMap.has(viewerSocketId)) return; // already connected
+                    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+                    // Add tracks
+                    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                    // ICE to viewer
+                    pc.onicecandidate = (ev) => {
+                        if (ev.candidate){
+                            socket.emit('webrtc-ice-candidate', { targetSocketId: viewerSocketId, candidate: ev.candidate });
+                        }
+                    };
+                    pc.onconnectionstatechange = () => {
+                        if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed'){
+                            pcMap.delete(viewerSocketId);
+                        }
+                    };
+                    const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+                    await pc.setLocalDescription(offer);
+                    pcMap.set(viewerSocketId, pc);
+                    socket.emit('webrtc-offer', { targetSocketId: viewerSocketId, sdp: pc.localDescription });
+                } catch(err){ console.error('viewer-ready handling failed', err); }
+            });
+
+            // Receive answers from viewers
+            socket.on('webrtc-answer', async ({ from, sdp }) => {
+                try{
+                    const pc = pcMap.get(from);
+                    if (!pc) return;
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                } catch(err){ console.error('setRemoteDescription(answer) failed', err); }
+            });
+
+            // ICE from viewers
+            socket.on('webrtc-ice-candidate', async ({ from, candidate }) => {
+                try{
+                    const pc = pcMap.get(from);
+                    if (!pc || !candidate) return;
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch(err){ console.error('addIceCandidate from viewer failed', err); }
+            });
+
+            // Stop AV if server notifies
+            socket.on('admin-av-stopped', ({ roomId: r }) => {
+                stopAV();
+            });
+        })();
+    </script>
 </body>
 
 </html>

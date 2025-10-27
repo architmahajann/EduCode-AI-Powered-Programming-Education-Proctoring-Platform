@@ -7,7 +7,24 @@ const mongoose = require('mongoose');
 var indexRouter = require('./routes/index');
 const api = require('./routes/api');
 const rooomRouter = require('./routes/room');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+// expose selected env to templates
+const exposeToViews = {
+  JUDGE0_API_KEY: process.env.JUDGE0_API_KEY || '',
+  // Allow configuring WebRTC ICE servers via env (JSON array or single url)
+  WEBRTC_ICE_SERVERS: (() => {
+    try {
+      if (process.env.WEBRTC_ICE_SERVERS) {
+        // Accept either JSON string or a simple URL string
+        const v = process.env.WEBRTC_ICE_SERVERS.trim();
+        if (v.startsWith('[')) return JSON.parse(v);
+        return [{ urls: [v] }];
+      }
+    } catch (_) {}
+    // Default to public Google STUN
+    return [{ urls: ['stun:stun.l.google.com:19302'] }];
+  })()
+};
 let PORT = process.env.PORT || 3001;
 var app = express();   // instance of the Express application
 
@@ -26,6 +43,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// make variables available to all ejs views
+app.use((req, res, next) => {
+  Object.assign(res.locals, exposeToViews);
+  next();
+});
 
 app.use('/', indexRouter);  //Handles requests for the root URL.
 app.use('/api/v1', api);
@@ -46,15 +69,10 @@ const server = app.listen(PORT, () => {
 // MongoDB setup
 
 mongoose
-  .connect(process.env.MONGO_DB_URI, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_DB_URI)
   .then(() => console.log('DB CONNECTION SUCCESSFULL !'))
   .catch((err) => {
-    console.log('DB connection failed');
+    console.log('DB connection failed:', err.message);
   });
 
 //initialize socket for the server

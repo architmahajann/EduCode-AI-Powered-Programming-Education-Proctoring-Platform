@@ -2,9 +2,7 @@
 <html lang="en">
 
 <head>
-    <% include partials/head %>
-
-
+    <%- include('partials/head', {page: 'Home', menuId: 'home'}) %>
 </head>
 
 <body style="overflow: hidden;">
@@ -19,16 +17,43 @@
             <div style="color: whitesmoke; line-height:25px; font-size: 24px; font-weight: 300; padding-top: 30;" class="subheader"><span> Collaborative Coding & Assesment Platfrom For <p>Teachers & Students</p>  </span></div>
             <!-- <form> -->
             <img src="images/avatar.svg">
-            <h2 class="title">Welcome Teacher</h2>
+            <h2 class="title">Welcome to CodeSphere</h2>
             <div class="btns">
-                <a href="./create"><button class="btn">Create Room</button></a>
-                <!-- <a href=""> <button class="btn">Join Room</button></a> -->
+                <a href="./create"><button class="btn">Create Room (Teacher)</button></a>
+                <button class="btn" id="joinRoomBtn" onclick="showJoinRoomPrompt()">Join Room (Student)</button>
             </div>
         </div>
     </div>
     <footer style="position: fixed; bottom: 0; width: 100%; background-color: #1a1a1a; color: white; text-align: center; padding: 5px;">
-        &copy; Sarvesh Hadole And Team
+        &copy; Archit Mahajan And Team
     </footer>
+
+    <script>
+        function showJoinRoomPrompt() {
+            const input = prompt('Paste the full room link OR just the Room ID:');
+            if (!input || input.trim() === '') return;
+            
+            let roomId = input.trim();
+            
+            // If user pasted full URL, extract just the room ID
+            if (roomId.includes('/room/join/')) {
+                roomId = roomId.split('/room/join/').pop();
+            } else if (roomId.includes('http')) {
+                // Try to extract last segment if it's any URL
+                const parts = roomId.split('/').filter(p => p);
+                roomId = parts[parts.length - 1];
+            }
+            
+            // Remove any trailing slashes or whitespace
+            roomId = roomId.replace(/\/$/, '').trim();
+            
+            if (roomId && roomId.length > 10) {
+                window.location.href = '/room/join/' + roomId;
+            } else {
+                alert('Invalid Room ID. Please try again.');
+            }
+        }
+    </script>
 
 </body>
 
