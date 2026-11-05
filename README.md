@@ -1,359 +1,159 @@
-# CodeSphere-A_Collaborative_Coding_And_Proctored_Assesment_Platform
-CodeSphere is a comprehensive platform designed to enhance E-Learning by providing a real-time interactive web-based lab environment for students and teachers. It integrates advanced proctoring features to ensure the integrity of online assessments, making it a perfect solution for remote learning and secure online examinations.
+# Educode
 
-<hr>
+### AI-powered programming education and proctoring platform
 
-## Introduction 
- 
-The main goal of CodeSphere is to advance E-Learning by addressing two significant challenges: 
-1. Providing practical knowledge through a real-time interactive web-based lab.
-2. Ensuring the integrity of online assessments with robust proctoring mechanisms.
+Educode is a secure, real-time coding classroom for teaching, practice, timed assessments, submissions, and browser-based proctoring. Teachers create password-protected rooms; students join with a room ID; and the platform provides live collaboration, snapshots, static code feedback, and optional AI-assisted coaching.
+
+[![Django](https://img.shields.io/badge/API-Django%20REST-092E20?logo=django)](apps/api-django)
+[![React](https://img.shields.io/badge/Web-React%20%2B%20Vite-61DAFB?logo=react&logoColor=111)](apps/web-react)
+[![Node.js](https://img.shields.io/badge/Legacy-Express-339933?logo=node.js&logoColor=fff)](apps/legacy-node)
+
+> **Status:** The Django + React stack is the primary application. The Express application and historical integrations remain available during migration.
 
 ## Features
 
-### CodeSphere Lab
-- **Create Room**: The admin (teacher) can create a room with a secret link and password.
-- **Join Room**: Participants can join the room using the link and password to complete programming tasks.
-- **Code Editor**: Supports C, C++, Java, and Python, with enter, exit, run, and submit functionalities.
-- **Real-time Live Coding**: Admin can manage the room, guide, and verify each student's code in real-time.
-- **Code Checking**: Admin can download the submitted code as a PDF for review.
+- Live coding rooms with teacher and student roles
+- Practice and timed test sessions with question banks
+- Password-hashed room access and short-lived signed room tokens
+- Student submissions, teacher grading, and PDF evaluation reports
+- Browser camera snapshots and WebRTC signaling
+- Local code analysis with optional OpenAI enhancement
+- PostgreSQL support for production and SQLite for local development
+- Configurable CORS, host allowlists, throttling, upload limits, and secure headers
 
-### Proctoring
-- **Form Input**: Allows users to input their details and test invitation code.
-- **Multiple Tab Detection**: Detects and alerts if multiple tabs are open.
-- **Form Auto-fill**: Automatically fills in user details for subsequent tests using local storage.
-- **Audio and Video Checks**: Ensures the candidate’s audio and video setup meets the requirements.
-- **Live Webcam Feed**: Displays the candidate's live webcam feed on the page.
-- **Image Capture and Upload**: Captures images at configurable intervals and uploads them to the server.
-- **Admin Dashboard**: Displays all user information, allows setting the interval for image capture, and shows images with timestamps.
+## Architecture
 
-<hr>
+```text
+apps/
+  api-django/       Django REST API, persistence, room authorization, AI integrations
+  web-react/        React/Vite browser client
+  legacy-node/      Express/EJS application retained during migration
+legacy/
+  proctoring/       Historical services and browser-extension variants
+docs/
+  architecture.md   Runtime boundaries and migration notes
+```
 
-## Tech Stack used : 
+The current frontend talks to Django at `http://localhost:8000/api` by default. See [the architecture guide](docs/architecture.md) for boundaries and migration context.
 
-**Client:** Ejs, Bootstrap, CSS, JS
+## Requirements
 
-**Server:** NodeJs, MongoDB, Socket.io, Express.js
+- Node.js 20 or newer
+- Python 3.11 or newer
+- Git
+- PostgreSQL 14+ for production (optional locally)
+- MongoDB only for the legacy Express application
 
-**Others:** PostMan API, JWT Authentication, Cloudinary 
-<hr>
+## Quick start
 
-## Architecture of Extension
-![My image](https://res.cloudinary.com/dt9ckenyh/image/upload/v1678415195/my-images/Proctor_Vision_qkmqap.png)
-<hr>
+### 1. Clone and install
 
-## Flow Diagram
-<p align="center">
-  <img src="Demo/Screenshot 2024-06-07 143137.png" alt="image"/>
-</p>
+```powershell
+git clone https://github.com/architmahajann/Educode-AI-Powered-Programming-Education-Proctoring-Platform.git
+cd Educode-AI-Powered-Programming-Education-Proctoring-Platform
+npm install
+cd apps\web-react
+npm install
+cd ..\api-django
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-<hr>
+### 2. Configure the Django API
 
-## Screenshots
+```powershell
+Copy-Item .env.example .env
+```
 
-<p align="center">
-  <p>Landing Page</p>
-  <img src="Demo/Screenshot (782).png" alt="image"/>
-</p>
+Generate a strong value for `DJANGO_SECRET_KEY`, then edit `.env`:
 
-<p align="center">
-  <p>Form Details to create room</p>
-  <img src="Demo/Screenshot (783).png" alt="image"/>
-</p>
+```dotenv
+DJANGO_SECRET_KEY=replace-with-a-long-random-secret
+DJANGO_DEBUG=true
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+```
 
-<p align="center">
-  <p>Links of created rooms</p>
-  <img src="Demo/Screenshot (784).png" alt="image"/>
-</p>
+Never commit `.env`. The repository ignores environment files, SQLite databases, media uploads, logs, and generated dependencies.
 
-<p align="center">
-  <p>Allows users to input their details and test invitation code.</p>
-  <img src="Demo/Screenshot (785).png" alt="image"/>
-</p>
+### 3. Run the primary stack
 
-<p align="center">
-  <p>Join room by filling details[Proctoring is Started by webcam]</p>
-  <img src="Demo/Screenshot (786).png" alt="image"/>
-</p>
+Open three PowerShell terminals from the repository root:
 
-<p align="center">
-  <p>Filled the details</p>
-  <img src="Demo/Screenshot (787).png" alt="image"/>
-</p>
+```powershell
+npm run start:api
+npm run start:web
+```
 
-<p align="center">
-  <p>Time limited Room alloted to student named Sarvesh with random question allocated with proctoring On</p>
-  <img src="Demo/Screenshot (788).png" alt="image"/>
-</p>
+Open `http://localhost:5173`.
 
-<p align="center">
-  <p>Admin room, Admin can manage the room, guide, and verify each student's code in real-time.</p>
-  <img src="Demo/Screenshot (789).png" alt="image"/>
-</p>
+For the legacy application, configure `apps\legacy-node\.env` with `JWT_SECRET`, `MONGO_DB_URI`, and any provider settings, then run:
 
-<p align="center">
-  <p>Tab switch Alert, After 3 alerts student test will end</p>
-  <img src="Demo/Screenshot (790).png" alt="image"/>
-</p>
+```powershell
+npm run start:legacy
+```
 
-<p align="center">
-  <p>Admin can download the submitted code as a PDF for review.</p>
-  <img src="Demo/Screenshot (791).png" alt="image"/>
-</p>
+## API security
 
-<p align="center">
-  <p>Admin dashboard, Displays all user information, allows setting the interval for image capture, and shows images with timestamps.
-</p>
-  <img src="Demo/Screenshot (792).png" alt="image"/>
-</p>
+The API is designed so secrets stay server-side:
 
-<p align="center">
-  <p>Our Extension</p>
-  <img src="Demo/Screenshot 2024-06-07 093233.png" alt="image"/>
-</p>
+- Room passwords are stored as Django password hashes; plaintext passwords are never returned.
+- Creating or joining a room returns a short-lived HMAC-signed `X-Room-Token`.
+- Room reads, question changes, submissions, snapshots, grading, and reports require the appropriate room token.
+- Teacher-only resources reject student tokens.
+- Production startup fails without `DJANGO_SECRET_KEY` and rejects wildcard hosts.
+- CORS is allowlisted; anonymous requests are throttled; request bodies and image uploads are size-limited.
+- Security headers, secure cookies, HSTS, content sniffing protection, and clickjacking protection are enabled for production.
+- The legacy API requires its short-lived JWT cookie or bearer token for room data and proctoring endpoints.
+- Image upload IDs are validated before filesystem paths are constructed.
 
-<hr>
+For production, use HTTPS, a managed secret store, PostgreSQL, object storage for media, a reverse proxy, and restricted network access. Rotate secrets if they are ever exposed. Do not put OpenAI, MongoDB, database, or JWT secrets in React/Vite environment variables because browser variables are public.
 
-## API Reference
+## API overview
 
-### Get All Users Data
+Base URL: `http://localhost:8000/api`
+
+| Method | Endpoint | Access |
+|---|---|---|
+| `GET` | `/health/` | Public health check |
+| `POST` | `/rooms/` | Creates a teacher room and returns `access_token` |
+| `POST` | `/rooms/{id}/join/` | Password join; returns a student `access_token` |
+| `GET` | `/rooms/{id}/random_question/` | Room token |
+| `POST` | `/submissions/` | Student or teacher room token |
+| `GET` | `/submissions/?room={id}` | Teacher room token |
+| `PATCH` | `/submissions/{id}/` | Teacher room token |
+| `GET` | `/submissions/{id}/report/` | Teacher room token |
+| `POST` | `/rooms/{id}/snapshots/` | Student or teacher room token |
+| `GET` | `/rooms/{id}/snapshots/` | Teacher room token |
+| `POST` | `/ai/explain/` and `/ai/evaluate/` | Throttled API access |
+
+Send room credentials as:
 
 ```http
-  GET /retrieve-data
-```
-- The /retrieve-data endpoint is used to retrieve all user data and images stored on the server. The endpoint accepts a GET request with no query parameters. The endpoint returns an array of all user data and their images stored on the server.
-
-
-#### Request
-```
-Method: GET
-Endpoint: /retrieve-data
-Query Parameters: none
+X-Room-Token: <access_token>
 ```
 
-#### Response
-```
-Status Code: 200 OK
-Body:
-data: an array containing all user data and their images stored on the server
-```
+## Testing and build
 
-#### Example
-Retrieving all user data and images:
-```
-GET /retrieve-data
-```
-```
-Status: 200 OK
-{
-  "data": [
-    {
-      "_id": "615e93613a85de4fa0d6a0e2",
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "johndoe@example.com",
-      "testInvitation": "12345",
-      "id": "1633521057017",
-      "images": [
-        {
-          "url": "https://example.com/image1.jpg",
-          "timestamp": 1633521057017
-        },
-        {
-          "url": "https://example.com/image2.jpg",
-          "timestamp": 1633521063119
-        }
-      ],
-      "__v": 0
-    },
-    {
-      "_id": "615e93613a85de4fa0d6a0e3",
-      "firstName": "Jane",
-      "lastName": "Doe",
-      "email": "janedoe@example.com",
-      "testInvitation": "56789",
-      "id": "1633521068371",
-      "images": [
-        {
-          "url": "https://example.com/image3.jpg",
-          "timestamp": 1633521068371
-        }
-      ],
-      "__v": 0
-    }
-  ]
-}
-
+```powershell
+npm run build:web
+cd apps\api-django
+python manage.py check
 ```
 
-### SET New Interval
+## Privacy and responsible use
 
-```http
-  GET /set_interval?interval=value
-```
+Proctoring captures audio/video-related browser permissions and assessment events. Deploy only with informed consent, a clear retention policy, access controls, and compliance with applicable privacy and education regulations. Educode is not a substitute for institutional security or legal review.
 
-- The /set_interval endpoint is used to set the interval of image capturing in the extension. The endpoint accepts a GET request with the interval query parameter. The value of the interval parameter is in minutes, which is then converted to milliseconds and set as the interval for capturing images.
+## Contributing
 
-#### Request
-```
-Method: GET
-Endpoint: /set_interval
-Query Parameters:
-interval: a number representing the interval in minutes (e.g., interval=5)
+1. Create a feature branch.
+2. Keep secrets and generated files out of commits.
+3. Add or update tests for behavior changes.
+4. Run the web build and Django checks.
+5. Open a pull request describing security and migration impact.
 
-```
+## License
 
-#### Response
-```
-Status Code: 200 OK
-Body:
-success: a boolean value (true) indicating that the interval was set successfully
-```
-
-#### Example
-Setting the interval to 5 minutes:
-```
-GET /set_interval?interval=5
-```
-```
-Status: 200 OK
-{
-  "success": true
-}
-
-```
-
-
-- This route is used to set the interval for sending images to the server during an online assessment.
-- The route accepts a single query parameter:
-
-- `interval`: The time interval, in minutes, between image uploads. This parameter is required.
-
-- Provide an example of how to use the route, including the expected response. For example:
-
-
-```
-Example Request:
-GET /set_interval?interval=5
-
-Example Response:
-{
-  success: true
-}
-
-```
-
-### POST New User
-
-```http
-  POST /createUser
-```
-- The /createUser endpoint is used to create a new user in the system. This endpoint accepts a JSON object in the POST request body with the following properties:
-
-
-```
-firstName (required): The first name of the user.
-lastName (required): The last name of the user.
-email (required): The email address of the user.
-testInvitation (required): The invitation code for the test the user is taking.
-
-```
-- The API endpoint generates a unique id for the user and stores the user's information, along with an empty array of images, in the database
-
-#### Request
-```
-HTTP Method: POST
-Endpoint: /createUser
-Request Body: JSON object with the following properties:
-firstName (string, required)
-lastName (string, required)
-email (string, required)
-testInvitation (string, required)
-```
-
-```
-Example Request:
-POST /createUser
-Content-Type: application/json
-
-{
-  "firstName" : "John",
-  "lastName" :"Doe",
-  "email" : "johndoe@example.com",
-  "testInvitation" : "12345"
-}
-```
-
-#### Response
-- HTTP Status Code: 200 if successful, 500 if an error occurred
-- Response Body: JSON object with the following properties:
-```
-userid (string): The unique id assigned to the new user
-error (string): If an error occurred while creating the user.
-```
-- In response you will get unique userid of user
-
-```
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-    "userid": "1646726117427",
-}
-
-```
-
-
-
-### POST Upload Image of User
-```http
-  POST /upload-image
-```
-
-- The /upload-image route is used to upload an image for a specific user to the cloud. The route accepts a POST request and expects two parameters in the request body: image and userid.
-
-- The image parameter should contain the base64-encoded image data. The userid parameter should contain the user ID for which the image is being uploaded.
-
-- Upon receiving the request, the route generates a timestamp and uses it to create a unique file name for the image. It then uploads the image data to the cloud using the Cloudinary API and saves the image URL in the user's record in the database.
-
-- If there is an error in uploading the image, the route responds with a 500 status code and an error message. If the image is uploaded successfully, the route responds with a 200 status code and a JSON object containing the interval.
-
-####
-```
-HTTP Method: POST
-
-Endpoint: /upload-image
-
-Headers:
-
-Content-Type: application/json
-```
-- Body:
-```
-{
-  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6CAIAAAC0tAIdAAAgAElEQVR4nOzde5zU1d8/8D/rZKlNtSpJhN....", // base64 encoded image data
-  "userid": "12345" // User ID to associate the image with
-}
-```
-
-#### Response:
-```
-HTTP Status Code: 200 OK
-```
-- Body:
-```
-{
-  "interval": 60000 // Time interval set for capturing screenshots in milliseconds
-}
-```
-- If an error occurs during the image upload process, the response will have an HTTP status code of 500 and the body will contain an error message, for example:
-
-- HTTP Status Code: 500 Internal Server Error
-
-- Body:
-
-```
-{
-  "error": "Failed to save image"
-}
-```
+Add the project license before distributing this software. Until then, all rights remain with the copyright holder.

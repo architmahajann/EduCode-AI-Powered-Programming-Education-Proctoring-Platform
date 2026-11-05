@@ -1,2 +1,12 @@
 node_modules
 .env
+__pycache__/
+*.py[cod]
+*.sqlite3
+dist/
+coverage/
+apps/legacy-node/.env
+apps/api-django/media/
+apps/legacy-node/public/snapshots/
+legacy/**/.env
+*.log
